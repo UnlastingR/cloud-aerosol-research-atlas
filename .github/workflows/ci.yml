@@ -22,6 +22,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Validate TypeScript and build Vite
         run: npm run build
+      - name: Validate geography
+        run: npm run test:geo
       - uses: actions/upload-artifact@v4
         with:
           name: cloud-atlas-dist
