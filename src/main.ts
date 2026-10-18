@@ -299,10 +299,24 @@ const clusterMenu = app.querySelector<HTMLDivElement>('#cluster-menu')!;
 const clusterButtons = new Map<string,HTMLButtonElement>();
 const clusterItems = new Map<string,string[]>();
 const clusteredIds = new Set<string>();
-function closeCluster() { clusterMenu.hidden=true; }
+let expandedIds: string[] = [];
+const spiderButtons = new Map<string,HTMLButtonElement>();
+const spiderLines = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+spiderLines.classList.add('spider-lines');
+spiderLines.setAttribute('aria-hidden','true');
+labels.insertBefore(spiderLines,labels.firstChild);
+function closeCluster() {
+  clusterMenu.hidden=true;
+  expandedIds=[];
+  for(const node of spiderButtons.values())node.remove();
+  spiderButtons.clear();
+  spiderLines.replaceChildren();
+}
 function showCluster(ids: string[]) {
   const group = ids.map(id=>teamById.get(id)!).filter(Boolean);
   if (!group.length) return;
+  closeCluster();
+  expandedIds=[...ids];
   state.spin=false; controls.autoRotate=false; syncButtons();
   const direction = group.map(t=>coords(t.lat,t.lon,1)).reduce((a,b)=>a.add(b),new THREE.Vector3()).normalize();
   targetCamera=direction.multiplyScalar(3.3);
@@ -401,6 +415,7 @@ function layoutMarkers() {
   const nextKeys=new Set<string>();
   for(const items of groups.values()) {
     if(items.length<2)continue;
+    if(items.some(p=>expandedIds.includes(p.id)))continue;
     const ids=items.map(p=>p.id).sort();
     const key=ids.join(',');
     nextKeys.add(key);clusterItems.set(key,ids);
@@ -432,6 +447,7 @@ function layoutMarkers() {
   for(const p of sorted) {
     const m=markers.get(p.id)!;
     const label=m.label;
+    if(expandedIds.includes(p.id)){label.hidden=true;continue;}
     const width=Math.max(58,Math.min(128,label.textContent!.length*15+22)),height=31;
     // Try offsets above/below pins to avoid overlapping labels at high zoom.
     let best:{x:number;y:number}|null=null;
@@ -456,6 +472,33 @@ function layoutMarkers() {
     m.mesh.scale.setScalar(zoom*emph);m.halo.scale.setScalar(zoom*emph);
     m.hit.scale.setScalar(Math.max(.65,zoom));
   }
+  // Spiderfy still-overlapping institutions without changing geographic data.
+  // Each chip is linked back to its projected true point location.
+  spiderLines.setAttribute('viewBox',`0 0 ${Math.max(rect.width,1)} ${Math.max(rect.height,1)}`);
+  spiderLines.replaceChildren();
+  const expanded=expandedIds.map(id=>active.find(p=>p.id===id)).filter((p):p is (typeof active)[number]=>!!p);
+  if(expanded.length) {
+    const centerX=expanded.reduce((s,p)=>s+p.x,0)/expanded.length;
+    const centerY=expanded.reduce((s,p)=>s+p.y,0)/expanded.length;
+    expanded.forEach((p,i)=>{
+      let button=spiderButtons.get(p.id);
+      if(!button){
+        button=document.createElement('button');
+        button.type='button';button.className='spider-pin';button.dataset.team=p.id;
+        button.textContent=teamById.get(p.id)!.city;
+        labels.appendChild(button);spiderButtons.set(p.id,button);
+      }
+      const theta=-Math.PI/2+(i/expanded.length)*Math.PI*2;
+      const ring=expanded.length>4?125:99;
+      const tx=Math.max(65,Math.min(rect.width-65,centerX+ring*Math.cos(theta)));
+      const ty=Math.max(105,Math.min(rect.height-100,centerY+ring*Math.sin(theta)));
+      button.style.transform=`translate(-50%,-50%) translate(${tx}px,${ty}px)`;
+      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',String(p.x));line.setAttribute('y1',String(p.y));
+      line.setAttribute('x2',String(tx));line.setAttribute('y2',String(ty));
+      spiderLines.appendChild(line);
+    });
+  } else if(expandedIds.length){closeCluster();}
 }
 function animate(timestamp=0) {
   requestAnimationFrame(animate);
