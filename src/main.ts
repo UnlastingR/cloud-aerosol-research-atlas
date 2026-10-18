@@ -320,8 +320,10 @@ function showCluster(ids: string[]) {
   state.spin=false; controls.autoRotate=false; syncButtons();
   const direction = group.map(t=>coords(t.lat,t.lon,1)).reduce((a,b)=>a.add(b),new THREE.Vector3()).normalize();
   targetCamera=direction.multiplyScalar(3.3);
-  clusterMenu.innerHTML=`<div class="cluster-menu-head"><strong>附近 ${group.length} 个团队</strong><button data-close-cluster aria-label="关闭">×</button></div>
-    ${group.map(t=>`<button data-team="${t.id}" class="cluster-team">${safe(t.name)}<span>${safe(t.city)} ↗</span></button>`).join('')}`;
+  clusterMenu.innerHTML=`<div class="cluster-menu-head"><strong>已展开 ${group.length} 个团队</strong><button data-close-cluster aria-label="关闭">×</button></div>
+    <details class="cluster-details"><summary>也可以从列表选择</summary>
+    ${group.map(t=>`<button data-team="${t.id}" class="cluster-team">${safe(t.name)}<span>${safe(t.city)} ↗</span></button>`).join('')}
+    </details>`;
   clusterMenu.hidden=false;
 }
 function selectTeam(id: string, fly = true) {
@@ -486,6 +488,10 @@ function layoutMarkers() {
         button=document.createElement('button');
         button.type='button';button.className='spider-pin';button.dataset.team=p.id;
         button.textContent=teamById.get(p.id)!.city;
+        button.addEventListener('click',event=>{
+          event.stopPropagation();
+          selectTeam(p.id,true);
+        });
         labels.appendChild(button);spiderButtons.set(p.id,button);
       }
       const theta=-Math.PI/2+(i/expanded.length)*Math.PI*2;
