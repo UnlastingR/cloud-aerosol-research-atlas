@@ -372,7 +372,7 @@ function animate(timestamp=0) {
     const screen=m.position.clone().multiplyScalar(1.055).project(camera);
     m.label.style.transform=`translate(-50%,-100%) translate(${(screen.x*.5+.5)*rect.width}px,${(-screen.y*.5+.5)*rect.height-7}px)`;
   }
-  const n=camera.position.clone().negate().normalize();
+  const n=camera.position.clone().normalize();
   const lat=THREE.MathUtils.radToDeg(Math.asin(n.y));
   const lon=THREE.MathUtils.radToDeg(Math.atan2(n.x,n.z));
   app!.querySelector('#coords')!.textContent=`LAT ${Math.abs(lat).toFixed(1)}°${lat>=0?'N':'S'} / LON ${Math.abs(lon).toFixed(1)}°${lon>=0?'E':'W'}`;
